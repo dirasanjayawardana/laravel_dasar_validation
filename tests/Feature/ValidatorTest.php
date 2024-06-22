@@ -7,6 +7,8 @@ use App\Rules\Uppercase;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\In;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -298,5 +300,90 @@ class ValidatorTest extends TestCase
         $message = $validator->getMessageBag();
 
         Log::info($message->toJson(JSON_PRETTY_PRINT));
+    }
+
+
+    // Class Rule (class yang menyediakan rule yang bisa digunakan ketika membuat validator)
+    // berada didalam Illuminate\Validation\Rules, contoh In, Password, Enum, File, dll
+    public function testValidatorRuleClasses()
+    {
+        $data = [
+            "username" => "Dira",
+            "password" => "dirapp123@email.com"
+        ];
+
+        $rules = [
+            "username" => ["required", new In(["Dira", "Sanjaya", "Wardana"])],
+            "password" => ["required", Password::min(6)->letters()->numbers()->symbols()]
+        ];
+
+        $validator = Validator::make($data, $rules);
+        self::assertNotNull($validator);
+
+        self::assertTrue($validator->passes());
+    }
+
+
+    // Nested Array Validation (pada data berbentuk nested array asosiasi, bisa membuat rules dengan tanda titik .)
+    public function testNestedArray()
+    {
+        $data = [
+            "name" => [
+                "first" => "Dira",
+                "last" => "Sanjaya"
+            ],
+            "address" => [
+                "street" => "Jl. Sudirman",
+                "city" => "Jakarta",
+                "country" => "Indonesia"
+            ]
+        ];
+
+        $rules = [
+            "name.first" => ["required", "max:100"],
+            "name.last" => ["max:100"],
+            "address.street" => ["max:200"],
+            "address.city" => ["required", "max:100"],
+            "address.country" => ["required", "max:100"],
+        ];
+
+        $validator = Validator::make($data, $rules);
+        self::assertTrue($validator->passes());
+    }
+
+
+    // Indexed Array Validation (untuk melakukan validasi pada indexed array (array non asosiasi) dengan menggunakan * bukan .)
+    // tanda * berarti semua isi array
+    public function testNestedIndexedArray()
+    {
+        $data = [
+            "name" => [
+                "first" => "Dira",
+                "last" => "Sanjaya"
+            ],
+            "address" => [
+                [
+                    "street" => "Jl. Sudirman",
+                    "city" => "Jakarta",
+                    "country" => "Indonesia"
+                ],
+                [
+                    "street" => "Jl. Lada",
+                    "city" => "Jakarta",
+                    "country" => "Indonesia"
+                ]
+            ]
+        ];
+
+        $rules = [
+            "name.first" => ["required", "max:100"],
+            "name.last" => ["max:100"],
+            "address.*.street" => ["max:200"],
+            "address.*.city" => ["required", "max:100"],
+            "address.*.country" => ["required", "max:100"],
+        ];
+
+        $validator = Validator::make($data, $rules);
+        self::assertTrue($validator->passes());
     }
 }
